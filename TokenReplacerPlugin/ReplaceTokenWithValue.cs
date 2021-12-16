@@ -5,6 +5,7 @@ using System.ServiceModel;
 using Microsoft.Xrm.Sdk;
 using System.IO;
 using System.Runtime.Serialization.Json;
+using Microsoft.Xrm.Sdk.Messages;
 
 namespace TokenReplacerPlugin
 {
@@ -34,10 +35,69 @@ namespace TokenReplacerPlugin
                     // Plug-in business logic goes here.  
                     foreach(string field in config.Fields)
                     {
+                        // Check field exist on target entity
                         if(entity.Attributes.Contains(field))
                         {
+                            IOrganizationServiceFactory serviceFactory = (IOrganizationServiceFactory)serviceProvider.GetService(typeof(IOrganizationServiceFactory));
+                            IOrganizationService service = serviceFactory.CreateOrganizationService(context.UserId);
+
+                            // Retrieve field attributes
+                            RetrieveAttributeRequest attributeRequest = new RetrieveAttributeRequest
+                            {
+                                EntityLogicalName = entity.LogicalName,
+                                LogicalName = field,
+                                RetrieveAsIfPublished = true
+                            };
+                            RetrieveAttributeResponse attributeResponse = (RetrieveAttributeResponse)service.Execute(attributeRequest);
+
+                            // Check attribute type is supported
+                            if(attributeResponse.AttributeMetadata.AttributeType != Microsoft.Xrm.Sdk.Metadata.AttributeTypeCode.Memo && attributeResponse.AttributeMetadata.AttributeType != Microsoft.Xrm.Sdk.Metadata.AttributeTypeCode.String)
+                            {
+                                tracingService.Trace($"TokenReplacePlugin: {field} not of support type (Memo or String). {field} is of type {attributeResponse.AttributeMetadata.AttributeType}");
+                                throw new Exception($"TokenReplacePlugin: {field} not of support type (Memo or String). {field} is of type {attributeResponse.AttributeMetadata.AttributeType}");
+                            }
+                            
+                            // Replace token with value
                             string fieldValue = entity[field].ToString();
-                            entity[field] = fieldValue.Replace(config.Token, config.Value);
+                            fieldValue = fieldValue.Replace(config.Token, config.Value);
+
+                            // Check if value should be trimmed in length. This only happens if value has longer length than token (token: abc, value: 12345 could potentially cause the value to exceed the MaxLength of the field)
+                            if (config.TrimMaxLength)
+                            {
+                                int? fieldMaxLength = null;
+
+                                // Read MaxLength property of field
+                                switch (attributeResponse.AttributeMetadata.AttributeType)
+                                {
+                                    case Microsoft.Xrm.Sdk.Metadata.AttributeTypeCode.Memo:
+                                        {
+                                            fieldMaxLength = ((Microsoft.Xrm.Sdk.Metadata.MemoAttributeMetadata)attributeResponse.AttributeMetadata).MaxLength;
+                                            break;
+                                        }
+                                    case Microsoft.Xrm.Sdk.Metadata.AttributeTypeCode.String:
+                                        {
+                                            fieldMaxLength = ((Microsoft.Xrm.Sdk.Metadata.StringAttributeMetadata)attributeResponse.AttributeMetadata).MaxLength;
+                                            break;
+                                        }
+                                }
+                                
+                                if(fieldMaxLength.HasValue)
+                                {
+                                    if(fieldValue.Length > fieldMaxLength.Value)
+                                    { 
+                                        // Trim length of field value
+                                        fieldValue = fieldValue.Substring(0, fieldMaxLength.Value);
+                                    }
+                                }
+                                else
+                                {
+                                    tracingService.Trace("TokenReplacePlugin: MaxLength null");
+                                    throw new Exception("An error occured in TokenReplacerPlugin: MaxLength null");
+                                }
+                            }
+
+                            // Set field value
+                            entity[field] = fieldValue;
                         }
                     }
                 }
@@ -58,6 +118,7 @@ namespace TokenReplacerPlugin
 
     public class PluginConfiguration
     {
+        public bool TrimMaxLength { get; set; }
         public string Token { get; set; }
         public string Value { get; set; }
         public List<string> Fields { get; set; }
