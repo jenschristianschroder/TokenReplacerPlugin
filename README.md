@@ -4,6 +4,7 @@ Dataverse Plugin to replace Token with Value
 # Plugin Unsecure Configuration
 ```
 { 
+   "TrimMaxLength": true,
    "Token": "[newlinetoken]",
    "Value": "\n",
    "Fields": [ 
