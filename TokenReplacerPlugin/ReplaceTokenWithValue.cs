@@ -44,12 +44,12 @@ namespace TokenReplacerPlugin
 
                 catch (FaultException<OrganizationServiceFault> ex)
                 {
-                    throw new InvalidPluginExecutionException("An error occurred in CreateDispensationPlugin.", ex);
+                    throw new InvalidPluginExecutionException("An error occurred in TokenReplacerPlugin.", ex);
                 }
 
                 catch (Exception ex)
                 {
-                    tracingService.Trace("CreateDispensationPlugin: {0}", ex.ToString());
+                    tracingService.Trace("TokenReplacerPlugin: {0}", ex.ToString());
                     throw;
                 }
             }
