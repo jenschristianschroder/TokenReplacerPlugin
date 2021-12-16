@@ -13,7 +13,7 @@ Dataverse Plugin to replace Token with Value
    ] 
 }
 ```
-* TrimMaxLength: defines if the field value should be trimmed to not exceed field MaxLength. Note, field value will only be trimmed if the value is longer than the token (example: token: 123, value: 12345).
+* TrimMaxLength: defines if the value of the field should be trimmed to not exceed field MaxLength. Note, value of the field will only be trimmed if the *Value* is longer than the *Token* (example: Token: 123, Value: ABCDE - when replacing 123 with ABCDE the value of the field could potentially exceed the MaxLength of the field.).
 * Token: This will be the text that will be replaced
 * Value: This is the value that tokens will be replaced with
 * Fields: This is an array of fields to which the token replacement should be applied
