@@ -13,5 +13,5 @@ Dataverse Plugin to replace Token with Value
 ```
 
 Register step 
-![image](https://user-images.githubusercontent.com/24893229/146363594-bc4fcf9d-ac99-4184-9264-019b9943697e.png)
+![image](https://user-images.githubusercontent.com/24893229/146364342-f6e47947-a866-460b-9ef6-36fb562d61fc.png)
 
