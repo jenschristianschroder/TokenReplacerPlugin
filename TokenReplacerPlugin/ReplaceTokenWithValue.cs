@@ -6,20 +6,25 @@ using Microsoft.Xrm.Sdk;
 using System.IO;
 using System.Runtime.Serialization.Json;
 using Microsoft.Xrm.Sdk.Messages;
+using System.Text.RegularExpressions;
 
 namespace TokenReplacerPlugin
 {
     public class ReplaceTokenWithValue : IPlugin
     {
+        private string unsecureConfig;
         private PluginConfiguration config;
         public ReplaceTokenWithValue(string unsecure)
         {
             config = JsonHelper.Deserialize<PluginConfiguration>(unsecure);
+            unsecureConfig = unsecure;
+
         }
         public void Execute(IServiceProvider serviceProvider)
         {
             // Obtain the tracing service
             ITracingService tracingService = (ITracingService)serviceProvider.GetService(typeof(ITracingService));
+            tracingService.Trace($"config:{unsecureConfig}");
 
             // Obtain the execution context from the service provider.  
             IPluginExecutionContext context = (IPluginExecutionContext)serviceProvider.GetService(typeof(IPluginExecutionContext));
@@ -56,11 +61,23 @@ namespace TokenReplacerPlugin
                                 tracingService.Trace($"TokenReplacePlugin: {field} not of support type (Memo or String). {field} is of type {attributeResponse.AttributeMetadata.AttributeType}");
                                 throw new Exception($"TokenReplacePlugin: {field} not of support type (Memo or String). {field} is of type {attributeResponse.AttributeMetadata.AttributeType}");
                             }
-                            
-                            // Replace token with value
-                            string fieldValue = entity[field].ToString();
-                            fieldValue = fieldValue.Replace(config.Token, config.Value);
 
+                            // Replace regex pattern with value
+                            string fieldValue = entity[field].ToString();
+                            if(config.RegexPattern != "")
+                            {
+                                fieldValue = Regex.Replace(@fieldValue, @config.RegexPattern, @config.Value);
+                            }
+                            // Replace token with value
+                            else if(config.Token != "")
+                            {
+                                fieldValue = fieldValue.Replace(config.Token, config.Value);
+                            }
+                            else
+                            {
+                                tracingService.Trace($"TokenReplacePlugin: RegexPattern or Token configuration must be supplied");
+                                throw new Exception($"TokenReplacePlugin: RegexPattern or Token configuration must be supplied");
+                            }
                             // Check if value should be trimmed in length. This only happens if value has longer length than token (token: abc, value: 12345 could potentially cause the value to exceed the MaxLength of the field)
                             if (config.TrimMaxLength)
                             {
@@ -120,6 +137,7 @@ namespace TokenReplacerPlugin
     {
         public bool TrimMaxLength { get; set; }
         public string Token { get; set; }
+        public string RegexPattern { get; set; }
         public string Value { get; set; }
         public List<string> Fields { get; set; }
     }
